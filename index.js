@@ -9,7 +9,7 @@ class Ticketer {
     }
 
     async createTicket(settings) {
-        return (await new this.models.Ticket(settings).save()).toObject();
+        return (await this.models.Ticket.create(settings)).toObject();
     }
 
     async getTicketById(ticketID) {
@@ -22,7 +22,41 @@ class Ticketer {
     }
 
     async getTicketsByTag(tags, tagType) {
+        if (typeof tags === 'string') {
+            tags = [tags]
+        }
 
+        let query;
+        switch (tagType) {
+            case Ticketer.TAG_ALL:
+                query = {tags: {$all: tags}};
+                break;
+            case Ticketer.TAG_ATLEASTONE:
+                let subQueries = tags.map(tag => {
+                    return {tags: {$all: [tag]}};
+                });
+                query = {$or: subQueries};
+                break;
+            case Ticketer.TAG_NONE:
+                query = {tags: {$nin: tags}};
+                break;
+            default:
+                throw new Error('Invalid tag type');
+        }
+
+
+        let tickets = await this.models.Ticket.find(query);
+        return tickets.map(ticket => ticket.toObject());
+    }
+
+    async getAllTickets() {
+        let tickets = await this.models.Ticket.find();
+        return tickets.map(ticket => ticket.toObject());
+    }
+
+    async deleteAllTickets() {
+        let tickets = await this.models.Ticket.deleteMany();
+        return tickets;
     }
 
     async updateTicket(newTicket) {
